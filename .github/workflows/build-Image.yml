@@ -1,0 +1,95 @@
+name: Build IMAGE NG
+on: 
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      upload-cowtransfer:
+        description: "是否上传奶牛"
+        default: 'true'
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+      use-build-cache:
+        description: 'BUILD CACHE KEY: false/string'
+        default: 'false'
+        required: false
+
+env:
+  TZ: Asia/Shanghai
+  DEBIAN_FRONTEND: noninteractive
+  SSH_ACTIONS: false
+  PROJECT: RPi
+  DEVICE: RPi2
+  ARCH: arm
+  CUSTOM_VERSION: ${{ github.event.inputs.custom-version }}
+  UPLOAD_COWTRANSFER: ${{ github.event.inputs.upload-cowtransfer }}
+  UPLOAD_ARTIFACT: ${{ github.event.inputs.upload-artifact }}
+jobs:
+  make-image:
+    name: Build Image
+    runs-on: ubuntu-20.04    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: Initialization Environment
+      run: |
+        echo $CUSTOM_VERSION
+        git branch -v
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/share/man
+        sudo -E apt-get -qq update
+        sudo -E apt-get install gcc make git unzip wget xz-utils bc gperf zip unzip g++  build-essential patchutils lzop xfonts-utils xsltproc libjson-perl cmake texinfo default-jre libncurses5-dev file zstd libparse-yapp-perl
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+    - name: Show Disk Space
+      run: |
+        df -hT
+    - name: Cache Build packages
+      uses: actions/cache@v2
+      if: (github.event.inputs.use-build-cache != 'false')
+      with:
+        key: ${{ runner.os }}-build-CoreELEC-${{ github.event.inputs.use-build-cache }}
+        restore-keys: |
+          ${{ runner.os }}-build-CoreELEC-
+        path: |
+          /home/runner/work/sources
+          /home/runner/work/build.CoreELEC*
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+    - name: Download Tools
+      run: |
+        env
+        tools/download-tool || tools/download-tool
+      if: false
+    - name: Make Image
+      id: compile
+      if: (!cancelled())
+      run: |
+        # export THREADCOUNT=100%
+        env
+        make image
+        make src-pkg
+        #|| (echo '=======ERROR===============' && THREADCOUNT=1 make image) ||  THREADCOUNT=1 make image V=s
+        echo "::set-output name=status::success"
+    - name: Upload firmware to cowtransfer
+      id: cowtransfer
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer cow --block 2621440 -s -p 64 --no-progress target/* 2>&1 | tee cowtransfer.log
+        echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
+        echo "::set-output name=url::$(cat cowtransfer.log | grep https | cut -f3 -d" ")"
+        ./transfer cow --block 2621440 -s -p 64 --no-progress sources.tar.xz 2>&1 | tee cowtransfer.log
+        echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
+        echo "::set-output name=url::$(cat cowtransfer.log | grep https | cut -f3 -d" ")"
+
+    - name: Delete workflow runs
+      uses: GitRML/delete-workflow-runs@main
+      with:
+        retain_days: 5
+        keep_minimum_runs: 5
