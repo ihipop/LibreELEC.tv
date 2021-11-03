@@ -73,6 +73,7 @@ jobs:
         # export THREADCOUNT=100%
         env
         make image
+        touch .stamps
         make src-pkg
         #|| (echo '=======ERROR===============' && THREADCOUNT=1 make image) ||  THREADCOUNT=1 make image V=s
         echo "::set-output name=status::success"
