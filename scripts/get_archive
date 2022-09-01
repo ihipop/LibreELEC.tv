@@ -33,7 +33,11 @@ NBWGET=10
 while [ ${NBWGET} -gt 0 ]; do
   for url in "${PKG_URL}" "${PACKAGE_MIRROR}"; do
     rm -f "${PACKAGE}"
-    if ${WGET_CMD} "${url}"; then
+    WGET_CMD_2=${WGET_CMD}
+    if [ ${NBWGET} -lt 8 ];then
+      WGET_CMD_2="env http_proxy= https_proxy= ftp_proxy= ${WGET_CMD}"
+    fi
+    if ${WGET_CMD_2} "${url}"; then
       CALC_SHA256=$(sha256sum "${PACKAGE}" | cut -d" " -f1)
 
       [ -z "${PKG_SHA256}" -o "${PKG_SHA256}" = "${CALC_SHA256}" ] && break 2
