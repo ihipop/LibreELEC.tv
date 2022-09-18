@@ -62,7 +62,7 @@ PKG_MESON_OPTS_TARGET="--libdir=/usr/lib \
                        -Dlogind=true \
                        -Dhostnamed=true \
                        -Dlocaled=false \
-                       -Dmachined=false \
+                       -Dmachined=true \
                        -Dportabled=false \
                        -Duserdb=false \
                        -Dhomed=false \
@@ -153,8 +153,8 @@ post_makeinstall_target() {
   safe_remove ${INSTALL}/usr/lib/systemd/system/systemd-hwdb-update.service
 
   # remove nspawn
-  safe_remove ${INSTALL}/usr/bin/systemd-nspawn
-  safe_remove ${INSTALL}/usr/lib/systemd/system/systemd-nspawn@.service
+  # safe_remove ${INSTALL}/usr/bin/systemd-nspawn
+  # safe_remove ${INSTALL}/usr/lib/systemd/system/systemd-nspawn@.service
 
   # remove unneeded generators
   for gen in ${INSTALL}/usr/lib/systemd/system-generators/*; do
