@@ -149,6 +149,19 @@ if [ "${TARGET_ARCH}" = "x86_64" ]; then
   ln -sfn /usr/lib ${INSTALL}/usr/lib64
 fi
 
+# add fake intereptor for arm64 kernel on arm64 device while the rootfs is arm
+# now you can run aarch64 binary with the help of right aarch64 libs and LD_LIBRARY_PATH
+# install entware is suggested to provider the libs
+if [ "${TARGET_ARCH}" = "arm" -a "${TARGET_KERNEL_ARCH}" = "arm64" ]; then
+  if [ -d ${INSTALL}/opt ];then
+    ln -sfn /opt/lib ${INSTALL}/usr/lib64
+  else
+    ln -sfn /storage/.local/lib ${INSTALL}/usr/lib64
+  fi
+  ln -sfn /usr/lib64 ${INSTALL}/lib64
+  ln -sfn /usr/lib64/ld-linux-aarch64.so.1 ${INSTALL}/usr/lib/ld-linux-aarch64.so.1
+fi
+
 echo "${TARGET_VERSION}" > ${INSTALL}/etc/release
 
 # Create /etc/os-release
